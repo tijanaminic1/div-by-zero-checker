@@ -76,7 +76,58 @@ public class DivByZeroTransfer extends CFTransfer {
    */
   private AnnotationMirror refineLhsOfComparison(
       Comparison operator, AnnotationMirror lhs, AnnotationMirror rhs) {
-    // TODO
+        AnnotationMirror zero = reflect(Zero.class);
+        AnnotationMirror positive = reflect(Positive.class);
+        AnnotationMirror negative = reflect(Negative.class);
+        AnnotationMirror nonzero = reflect(NonZero.class);
+        
+
+    switch (operator) {
+      case EQ:
+        if (equal(rhs, zero)) {
+          return glb(lhs, zero);
+        }
+        if (equal(rhs, positive)) {
+          return glb(lhs, positive);
+        }
+        if (equal(rhs, negative)) {
+          return glb(lhs, negative);
+        }
+        if (equal(rhs, nonzero)) {
+          return glb(lhs, nonzero);
+        }
+        return lhs;
+
+      case NE:
+        if (equal(rhs, zero)) {
+          return glb(lhs, nonzero);
+        }
+        return lhs;
+
+      case LT:
+        if (equal(rhs, zero) || equal(rhs, negative)) {
+          return glb(lhs, negative);
+        }
+        return lhs;
+
+      case LE:
+        if (equal(rhs, negative)) {
+          return glb(lhs, negative);
+        }
+        return lhs;
+
+      case GT:
+        if (equal(rhs, zero) || equal(rhs, positive)) {
+          return glb(lhs, positive);
+        }
+        return lhs;
+
+      case GE:
+        if (equal(rhs, positive)) {
+          return glb(lhs, positive);
+        }
+        return lhs;
+    }
     return lhs;
   }
 
@@ -96,9 +147,119 @@ public class DivByZeroTransfer extends CFTransfer {
    * @return the lattice point for the result of the expression
    */
   private AnnotationMirror arithmeticTransfer(
-      BinaryOperator operator, AnnotationMirror lhs, AnnotationMirror rhs) {
-    // TODO
-    return top();
+    BinaryOperator operator, AnnotationMirror lhs, AnnotationMirror rhs) {
+    AnnotationMirror zero = reflect(Zero.class);
+    AnnotationMirror positive = reflect(Positive.class);
+    AnnotationMirror negative = reflect(Negative.class);
+    AnnotationMirror nonzero = reflect(NonZero.class);
+    AnnotationMirror t = top();
+    AnnotationMirror b = bottom();
+
+    // Covers all transfer function table fields that include bottom
+    if (equal(lhs, b) || equal(rhs, b)) {
+      return b;
+    }
+
+    switch (operator) {
+      case PLUS:
+        if (equal(lhs, zero)) {
+          return rhs;
+        }
+        if (equal(rhs, zero)) {
+          return lhs;
+        }
+        if (equal(lhs, positive) && equal(rhs, positive)) {
+          return positive;
+        }
+        if (equal(lhs, negative) && equal(rhs, negative)) {
+          return negative;
+        }
+        return t;
+
+      case MINUS:
+        if (equal(rhs, zero)) {
+          return lhs;
+        }
+        if (equal(lhs, zero)) {
+          if (equal(rhs, positive)) {
+            return negative;
+          }
+          if (equal(rhs, negative)) {
+            return positive;
+          }
+          if (equal(rhs, nonzero)) {
+            return nonzero;
+          }
+          return t;
+        }
+        if (equal(lhs, positive) && equal(rhs, negative)) {
+          return positive;
+        }
+        if (equal(lhs, negative) && equal(rhs, positive)) {
+          return negative;
+        }
+        return t;
+
+      case TIMES:
+        if (equal(lhs, zero) || equal(rhs, zero)) {
+          return zero;
+        }
+        if (equal(lhs, nonzero) && equal(rhs, nonzero)) {
+          return nonzero;
+        }
+        if (equal(lhs, positive) && equal(rhs, positive)) {
+          return positive;
+        }
+        if (equal(lhs, positive) && equal(rhs, negative)) {
+          return negative;
+        }
+        if (equal(lhs, negative) && equal(rhs, positive)) {
+          return negative;
+        }
+        if (equal(lhs, negative) && equal(rhs, negative)) {
+          return positive;
+        }
+        return t;
+
+      case DIVIDE:
+        // Accounts for cases for bottom
+        if (equal(lhs, b) || equal(rhs, b)) {
+          return b;
+        }
+        if (equal(lhs, zero)) {
+          return zero;
+        }
+        if (equal(lhs, nonzero) && (equal(rhs, nonzero) || equal(rhs, positive) || equal(rhs, negative))) {
+          return nonzero;
+        }
+        if (equal(lhs, positive) && equal(rhs, positive)) {
+          return positive;
+        }
+        if (equal(lhs, positive) && equal(rhs, negative)) {
+          return negative;
+        }
+        if (equal(lhs, negative) && equal(rhs, positive)) {
+          return negative;
+        }
+        if (equal(lhs, negative) && equal(rhs, negative)) {
+          return positive;
+        }
+        return t;
+
+      case MOD:
+        if (equal(lhs, zero)) {
+          return zero;
+        }
+        if (equal(lhs, positive)) {
+          // result is either zero or positive; use lub to return top
+          return lub(zero, positive);
+        }
+        if (equal(lhs, negative)) {
+          return lub(zero, negative);
+        }
+        return t;
+    }
+    return t;
   }
 
   // ========================================================================
